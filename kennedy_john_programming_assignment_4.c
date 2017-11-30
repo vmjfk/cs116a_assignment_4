@@ -2,10 +2,13 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 
 #define MAIN_WINDOW_WIDTH 640
 #define MAIN_WINDOW_HEIGHT 480
+
+int window_height,window_width;
 
 struct drawSpec {
     int shapeType; // 0=rect,1=line,2=ellipse,3=bezier
@@ -33,30 +36,94 @@ void printDrawSpec(struct drawSpec spec)
     }
     
 }
-
+GLenum errorCheck()
+{
+    GLenum code;
+    const GLubyte *string;
+    code = glGetError();
+    if(code == GL_NO_ERROR)
+    {
+        string = gluErrorString(code);
+        fprintf(stderr,"GL Error = %s\n",string);
+    }
+    return code;
+}
 void drawRect(struct drawSpec shape)
 {
     printf("drawRect called\n");
-
+    printDrawSpec(shape);
+    GLenum gl_mode;
+    if(shape.isFilled == 0)
+    {
+        gl_mode = GL_LINE_LOOP;
+    }
+    else
+    {
+        gl_mode = GL_POLYGON;
+    }
+    glBegin (gl_mode);
     glColor3f (shape.r,shape.g,shape.b);
-    glBegin (GL_POLYGON);
-    glVertex3d (shape.x[0],shape.y[0], 0);
-    glVertex3d (shape.x[1],shape.y[0], 0);
-    glVertex3d (shape.x[1],shape.y[1], 0);
-    glVertex3d (shape.x[0],shape.y[1], 0);
+  
+    glVertex2i (shape.x[0],shape.y[0]);
+    glVertex2i (shape.x[1],shape.y[0]);
+    glVertex2i (shape.x[1],shape.y[1]);
+    glVertex2i (shape.x[0],shape.y[1]);
+
     glEnd ();
-    glFlush ();
+    errorCheck();
 
 }
 void drawLine(struct drawSpec shape)
 {
     printf("drawLine called\n");
+    printDrawSpec(shape);
+    GLenum gl_mode;
+    gl_mode = GL_LINES;
+    glBegin (gl_mode);
+    glColor3f (shape.r,shape.g,shape.b);
+  
+    glVertex2i (shape.x[0],shape.y[0]);
+    glVertex2i (shape.x[1],shape.y[1]);
 
-}void drawEllipse(struct drawSpec shape)
+    glEnd ();
+    errorCheck();
+
+}
+void drawEllipse(struct drawSpec shape)
 {
     printf("drawEllipse called\n");
+    double theta = 0.0; 
+    printDrawSpec(shape);
+    GLenum gl_mode;
+    if(shape.isFilled == 0)
+    {
+        gl_mode = GL_LINE_LOOP;
+    }
+    else
+    {
+        gl_mode = GL_POLYGON;
+    }
+    glBegin (gl_mode);
+    glColor3f (shape.r,shape.g,shape.b);
+    int center_x = shape.x[0];
+    int center_y = shape.y[0];
+    int radius_x = shape.x[1] - shape.x[0];
+    int radius_y = shape.y[1] - shape.y[0];
 
-}void drawBezier(struct drawSpec shape)
+    for(theta = 0;theta < 2 * M_PI;theta+=2*M_PI / 360)
+    {
+        printf("theta = %f\n",theta);
+        int x = center_x + radius_x*cos(theta);
+        int y = center_y + radius_y*sin(theta);
+    
+        glVertex2i (x,y);
+    }
+    glEnd ();
+    errorCheck();
+    
+}
+
+void drawBezier(struct drawSpec shape)
 {
     printf("drawBezier called\n");
 
@@ -90,11 +157,6 @@ void loadShapes()
 
 }
 
-void reshow()
-{
-
-    glutPostRedisplay();
-}
 
 void mouse(int button, int state, int x, int y)
 {
@@ -106,8 +168,10 @@ void mouse(int button, int state, int x, int y)
     int currentShape = totalShapes;
     if(shapeQueue[totalShapes].complete == 0) // don't do anything without a spec waiting to be filled
     {
+        //convert these to the screen coordinates. screen origin is bottom left, mouse origin is top left. 
+        int new_y = window_height - y; 
         shapeQueue[totalShapes].x[shapeQueue[totalShapes].pointsEntered] = x;
-        shapeQueue[totalShapes].y[shapeQueue[totalShapes].pointsEntered] = y;
+        shapeQueue[totalShapes].y[shapeQueue[totalShapes].pointsEntered] = new_y;
         shapeQueue[totalShapes].pointsEntered++;
         int pointsNeeded = 0;
         switch(shapeQueue[totalShapes].shapeType) // 0=rect,1=line,2=ellipse,3=bezier
@@ -130,7 +194,7 @@ void mouse(int button, int state, int x, int y)
         }
     }
     printDrawSpec(shapeQueue[currentShape]);
-    loadShapes();
+    glutPostRedisplay();
 
  
 }
@@ -227,9 +291,9 @@ void init(void)
 {
 
 
-    glClearColor(0,0,0,0);
+    glClearColor(0.0,0.0,0.0,0.0);
     glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0,100,0,200);
+    gluOrtho2D(0,MAIN_WINDOW_WIDTH ,0,MAIN_WINDOW_HEIGHT);
 
 
 }
@@ -237,24 +301,23 @@ void init(void)
 void display()
 {
     printf("display called\n");
-    glClear(GL_COLOR_BUFFER_BIT);
+
+    glClear (GL_COLOR_BUFFER_BIT);
 
     loadShapes();
     glFlush();
-    glutSwapBuffers();
-
 }
 
 
 void reshape(int width, int height)
 {
     printf("reshape called.\n");
-    glViewport(0,0,width,height);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    GLfloat aspect = (GLfloat) width/(GLfloat)height;
-    gluPerspective(45.0f,aspect, 0.1f,100.0f);  
-    glMatrixMode(GL_MODELVIEW);
+    window_height = height;
+    window_width = width;
+
+ //   gluOrtho2D(0,width,0,height);
+    glutPostRedisplay();
+
 }
 void buildMenus()
 {
@@ -337,9 +400,11 @@ void buildMenus()
 
 int main (int argc, char *argv[])
 {  
+    window_height = MAIN_WINDOW_HEIGHT;
+    window_width = MAIN_WINDOW_WIDTH;
 
 	glutInit (&argc, argv);
-	glutInitDisplayMode (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitDisplayMode (GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize (MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
 	glutInitWindowPosition (0,0);
 	glutCreateWindow ("MyPaint");
