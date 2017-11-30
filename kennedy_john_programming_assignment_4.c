@@ -126,12 +126,40 @@ void drawEllipse(struct drawSpec shape)
 void drawBezier(struct drawSpec shape)
 {
     printf("drawBezier called\n");
+    printDrawSpec(shape);
+    int C[4];
+    C[0] = 1;
+    C[1] = 3;
+    C[2] = 3;
+    C[3] = 1;
+    
+    GLenum gl_mode;
+    gl_mode = GL_LINE_STRIP;
+    glBegin (gl_mode);
+    glColor3f (shape.r,shape.g,shape.b);
+ 
+    for(float t=0;t<1.0;t+=0.05) //20 bez points
+    {
+        GLfloat x, y;
+        x = 0.0;
+        y = 0.0;
+        for(int i = 0 ; i < 4;i++) //4 th degree bez
+        {
+            x += pow((1-t),3-i)*shape.x[i]*C[i]*pow(t,i);
+            y += pow((1-t),3-i)*shape.y[i]*C[i]*pow(t,i);
+        }
+        glVertex2i (x,y);
+        printf("bezier x = %f,y = %f\n",x,y);
+
+    }
+    glEnd ();
+    errorCheck();
 
 }
 void loadShapes()
 {
     // loops through the shape queue and call a draw program for each one. 
-    // detgermines which draw to do by the "shapetype" attribute of the drawspec. 
+    // determines which draw to do by the "shapetype" attribute of the drawspec. 
     for(int i=0;i<totalShapes;i++)
     {
         if(shapeQueue[i].complete == 1)
@@ -168,10 +196,9 @@ void mouse(int button, int state, int x, int y)
     int currentShape = totalShapes;
     if(shapeQueue[totalShapes].complete == 0) // don't do anything without a spec waiting to be filled
     {
-        //convert these to the screen coordinates. screen origin is bottom left, mouse origin is top left. 
-        int new_y = window_height - y; 
+
         shapeQueue[totalShapes].x[shapeQueue[totalShapes].pointsEntered] = x;
-        shapeQueue[totalShapes].y[shapeQueue[totalShapes].pointsEntered] = new_y;
+        shapeQueue[totalShapes].y[shapeQueue[totalShapes].pointsEntered] = y;
         shapeQueue[totalShapes].pointsEntered++;
         int pointsNeeded = 0;
         switch(shapeQueue[totalShapes].shapeType) // 0=rect,1=line,2=ellipse,3=bezier
@@ -293,7 +320,7 @@ void init(void)
 
     glClearColor(0.0,0.0,0.0,0.0);
     glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0,MAIN_WINDOW_WIDTH ,0,MAIN_WINDOW_HEIGHT);
+    gluOrtho2D(0,MAIN_WINDOW_WIDTH,0,MAIN_WINDOW_HEIGHT);
 
 
 }
@@ -311,12 +338,20 @@ void display()
 
 void reshape(int width, int height)
 {
-    printf("reshape called.\n");
+    printf("reshape called. width = %d, height = %d\n",width,height);
     window_height = height;
     window_width = width;
 
  //   gluOrtho2D(0,width,0,height);
-    glutPostRedisplay();
+//    glutPostRedisplay();
+
+//	glViewport( 0, 0, width, height );
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0,width,height,0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
 
 }
 void buildMenus()
