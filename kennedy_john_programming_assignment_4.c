@@ -137,7 +137,11 @@ void drawBezier(struct drawSpec shape)
     gl_mode = GL_LINE_STRIP;
     glBegin (gl_mode);
     glColor3f (shape.r,shape.g,shape.b);
- 
+    for(int i=0;i<4;i++)
+    {
+        printf("bezier point %d x = %d , y = %d\n",i,shape.x[i],shape.y[i]);
+
+    }
     for(float t=0;t<1.0;t+=0.05) //20 bez points
     {
         GLfloat x, y;
@@ -149,7 +153,7 @@ void drawBezier(struct drawSpec shape)
             y += pow((1-t),3-i)*shape.y[i]*C[i]*pow(t,i);
         }
         glVertex2i (x,y);
-        printf("bezier x = %f,y = %f\n",x,y);
+        //printf("bezier x = %f,y = %f\n",x,y);
 
     }
     glEnd ();
@@ -320,7 +324,7 @@ void init(void)
 
     glClearColor(0.0,0.0,0.0,0.0);
     glMatrixMode(GL_PROJECTION);
-    gluOrtho2D(0,MAIN_WINDOW_WIDTH,0,MAIN_WINDOW_HEIGHT);
+    gluOrtho2D(0,MAIN_WINDOW_WIDTH,MAIN_WINDOW_HEIGHT,0);
 
 
 }
